@@ -78,6 +78,24 @@ void MainMenuPage::loop()
     if (hovered == 4)
         u8g2.drawRFrame(71, y + rowSpacing - 11, 56, 16, 5);
 
+    // NEU: Sensors Entry
+    static unsigned char sensors_20icon_bits[] = {
+        0x00, 0x00, 0x60, 0x00, 0xf0, 0x00, 0xf8, 0x01, 0xfc, 0x03, 0xfc, 0x03,
+        0xfc, 0x03, 0xf8, 0x01, 0xf0, 0x00, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00};
+    u8g2.drawXBM(74, y - 9 + rowSpacing * 2, 12, 12, sensors_20icon_bits);
+    u8g2.drawStr(90, y + rowSpacing * 2, "Sensors");
+    if (hovered == 5)
+        u8g2.drawRFrame(71, y - 11 + rowSpacing * 2, 56, 16, 5);
+
+    // NEU: Advanced Entry
+    static unsigned char advanced_20icon_bits[] = {
+        0x00, 0x00, 0x60, 0x00, 0xf0, 0x00, 0xf8, 0x01, 0x6c, 0x03, 0x66, 0x06,
+        0x66, 0x06, 0x6c, 0x03, 0xf8, 0x01, 0xf0, 0x00, 0x60, 0x00, 0x00, 0x00};
+    u8g2.drawXBM(74, y - 9 + rowSpacing * 3, 12, 12, advanced_20icon_bits);
+    u8g2.drawStr(90, y + rowSpacing * 3, "Advanced");
+    if (hovered == 6)
+        u8g2.drawRFrame(71, y - 11 + rowSpacing * 3, 61, 16, 5);
+
     if (getRotaryEncoderSwitchValue() == UNPRESSED) rotaryEncoderButtonReady = true;
     if (getRotaryEncoderSwitchValue() == PRESSED  && rotaryEncoderButtonReady)
     {
@@ -101,6 +119,14 @@ void MainMenuPage::loop()
 
         case 4:
             currentPage = offsetsPage;
+            return;
+
+        case 5:
+            currentPage = sensorsPage;
+            return;
+
+        case 6:
+            currentPage = advancedPage;
             return;
 
         default:

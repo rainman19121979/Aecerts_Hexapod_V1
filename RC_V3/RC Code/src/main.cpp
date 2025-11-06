@@ -53,6 +53,10 @@ void loop()
   {
     if (currentPage == homePage)
       sendNRFData(RC_CONTROL_DATA);
+    else if (currentPage == sensorsPage)
+      sendNRFData(RC_SENSOR_CONTROL_DATA);      // NEU: Sensor-Control senden
+    else if (currentPage == advancedPage)
+      sendNRFData(RC_ADVANCED_SETTINGS_DATA);   // NEU: Advanced Settings senden
     else
       sendNRFData(RC_SETTINGS_DATA);
   }

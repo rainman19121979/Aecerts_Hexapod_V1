@@ -41,7 +41,7 @@ public:
 
 private:
     int hovered = 0;
-    int numChoices = 5;
+    int numChoices = 7;  // NEU: 5 -> 7 (+ Sensors + Advanced)
     bool backButtonReady;
 };
 
@@ -112,6 +112,28 @@ class LegTestPage : public Page
 public:
     void loop() override;
     void init() override;
+};
+
+// NEU: SensorsPage
+class SensorsPage : public Page
+{
+public:
+    void loop() override;
+    void init() override;
+
+private:
+    int hovered = 0;
+};
+
+// NEU: AdvancedPage
+class AdvancedPage : public Page
+{
+public:
+    void loop() override;
+    void init() override;
+
+private:
+    int hovered = 0;
 };
 
 #endif // PAGES_H

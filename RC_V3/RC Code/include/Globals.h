@@ -2,10 +2,10 @@
 
 #include <Arduino.h>
 
-#define BUMPER_A_DESCRIPTION "Not in use."
-#define BUMPER_B_DESCRIPTION "Not in use."
-#define BUMPER_C_DESCRIPTION "Not in use."
-#define BUMPER_D_DESCRIPTION "Not in use."
+#define BUMPER_A_DESCRIPTION "Slam Attack. Press to make the hex perform a slam attack."
+#define BUMPER_B_DESCRIPTION "Emergency Stop. Press to immediately stop all movement."
+#define BUMPER_C_DESCRIPTION "Quick Turn Right. Press for instant right rotation."
+#define BUMPER_D_DESCRIPTION "Quick Turn Left. Press for instant left rotation."
 
 #define SWITCH_A_DESCRIPTION "Gyro Toggle. Control the hex's body tilt by tilting the RC."
 #define SWITCH_B_DESCRIPTION "High Step Toggle. Drastically increases the feet lift height."
@@ -61,7 +61,9 @@ enum PackageType {
     RC_CONTROL_DATA = 1,
     RC_SETTINGS_DATA = 2,
     HEXAPOD_SETTINGS_DATA = 3,
-    HEXAPOD_SENSOR_DATA = 4
+    HEXAPOD_SENSOR_DATA = 4,
+    RC_SENSOR_CONTROL_DATA = 5,     // Sensor-Feature Steuerung
+    RC_ADVANCED_SETTINGS_DATA = 6   // Advanced Settings
 };
 
 const int gaitCount = 6;
@@ -108,6 +110,8 @@ class SettingsPage;
 class StatsPage;
 class GaitsPage;
 class OffsetsPage;
+class SensorsPage;    // NEU
+class AdvancedPage;   // NEU
 
 extern Gaits selectedGait;
 extern Page *currentPage;
@@ -120,6 +124,8 @@ extern SettingsPage *settingsPage;
 extern StatsPage *statsPage;
 extern GaitsPage *gaitsPage;
 extern OffsetsPage *offsetsPage;
+extern SensorsPage *sensorsPage;     // NEU
+extern AdvancedPage *advancedPage;   // NEU
 
 #define EEPROM_NRF_ADDRESS_ADDR         0 //requires 6 bytes
 #define EEPROM_NRF_ADDRESS_ARRAY_SIZE    6 // size of the NRF address in bytes
@@ -137,6 +143,12 @@ extern int8_t hexSavedOffsets[OFFSETS_COUNT]; // Declare offsets array
 extern int8_t offsets[OFFSETS_COUNT]; // Declare offsets array
 extern float current_sensor_value; // Declare current sensor value
 extern Vector2int foot_positions[6]; // Declare foot positions array
+
+// NEU: Sensor-Daten vom Hexapod
+extern byte foot_contact;               // 6 bits für Fuß-Kontakte
+extern byte contact_count;              // Anzahl Beine mit Bodenkontakt (0-6)
+extern byte terrain_roughness;          // Terrain-Rauheit 0-255
+extern byte adaptive_speed_multiplier;  // Geschwindigkeitsfaktor 0-255
 
 void loadValues();
 void saveValues();

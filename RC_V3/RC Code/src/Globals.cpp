@@ -22,9 +22,17 @@ SettingsPage *settingsPage = new SettingsPage();
 StatsPage *statsPage = new StatsPage();
 GaitsPage *gaitsPage = new GaitsPage();
 OffsetsPage *offsetsPage = new OffsetsPage();
+SensorsPage *sensorsPage = new SensorsPage();         // NEU
+AdvancedPage *advancedPage = new AdvancedPage();      // NEU
 
 Page *previousPage = nullptr;
 Page *currentPage = homePage;
+
+// NEU: Sensor-Daten vom Hexapod (werden via NRF empfangen)
+byte foot_contact = 0;                  // 6 bits für Fuß-Kontakte
+byte contact_count = 0;                 // Anzahl Beine mit Bodenkontakt
+byte terrain_roughness = 0;             // Terrain-Rauheit 0-255
+byte adaptive_speed_multiplier = 255;   // Geschwindigkeitsfaktor 0-255
 
 void loadValues()
 {
