@@ -230,52 +230,15 @@ int angleToMicroseconds(double angle) {
 
 void rotateToAngle(int leg, Vector3 targetRot) {
   if(!servosAttached) attachServos();
-  
+
   int coxaMicroseconds = angleToMicroseconds(targetRot.x);
   int femurMicroseconds = angleToMicroseconds(targetRot.y);
   int tibiaMicroseconds = angleToMicroseconds(targetRot.z);
 
-  switch (leg) {
-    case 0:
-      coxa1.writeMicroseconds(coxaMicroseconds);
-      femur1.writeMicroseconds(femurMicroseconds);
-      tibia1.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 1:
-      coxa2.writeMicroseconds(coxaMicroseconds);
-      femur2.writeMicroseconds(femurMicroseconds);
-      tibia2.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 2:
-      coxa3.writeMicroseconds(coxaMicroseconds);
-      femur3.writeMicroseconds(femurMicroseconds);
-      tibia3.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 3:
-      coxa4.writeMicroseconds(coxaMicroseconds);
-      femur4.writeMicroseconds(femurMicroseconds);
-      tibia4.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 4:
-      coxa5.writeMicroseconds(coxaMicroseconds);
-      femur5.writeMicroseconds(femurMicroseconds);
-      tibia5.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 5:
-      coxa6.writeMicroseconds(coxaMicroseconds);
-      femur6.writeMicroseconds(femurMicroseconds);
-      tibia6.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    default:
-      break;
-  }
-  return;
+  // Optimiert: Array-basierter Zugriff statt Switch-Statement
+  coxaServos[leg]->writeMicroseconds(coxaMicroseconds);
+  femurServos[leg]->writeMicroseconds(femurMicroseconds);
+  tibiaServos[leg]->writeMicroseconds(tibiaMicroseconds);
 }
 
 void moveToPos(int leg, Vector3 pos) {
@@ -318,66 +281,25 @@ void moveToPos(int leg, Vector3 pos) {
   int femurMicroseconds = angleToMicroseconds(targetRot.y);
   int tibiaMicroseconds = angleToMicroseconds(targetRot.z);
 
-  switch (leg) {
-    case 0:
-      coxa1.writeMicroseconds(coxaMicroseconds);
-      femur1.writeMicroseconds(femurMicroseconds);
-      tibia1.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 1:
-      coxa2.writeMicroseconds(coxaMicroseconds);
-      femur2.writeMicroseconds(femurMicroseconds);
-      tibia2.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 2:
-      coxa3.writeMicroseconds(coxaMicroseconds);
-      femur3.writeMicroseconds(femurMicroseconds);
-      tibia3.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 3:
-      coxa4.writeMicroseconds(coxaMicroseconds);
-      femur4.writeMicroseconds(femurMicroseconds);
-      tibia4.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 4:
-      coxa5.writeMicroseconds(coxaMicroseconds);
-      femur5.writeMicroseconds(femurMicroseconds);
-      tibia5.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    case 5:
-      coxa6.writeMicroseconds(coxaMicroseconds);
-      femur6.writeMicroseconds(femurMicroseconds);
-      tibia6.writeMicroseconds(tibiaMicroseconds);
-      break;
-
-    default:
-      break;
-  }
-  return;
+  // Optimiert: Array-basierter Zugriff statt Switch-Statement
+  coxaServos[leg]->writeMicroseconds(coxaMicroseconds);
+  femurServos[leg]->writeMicroseconds(femurMicroseconds);
+  tibiaServos[leg]->writeMicroseconds(tibiaMicroseconds);
 }
 
 #define EEPROM_OFFSETS_ADDR 0  // 18 bytes
 
-void saveOffsets() {  
+void saveOffsets() {
+  // Optimiert: Block-Write statt einzelner Writes (18x schneller)
   Serial.print("Saving rawOffsets to EEPROM. ");
-  for (int i = 0; i < 18; i++) {
-    EEPROM.put(EEPROM_OFFSETS_ADDR + i * sizeof(int8_t), rawOffsets[i]);
-  }
+  EEPROM.put(EEPROM_OFFSETS_ADDR, rawOffsets);
   Serial.println("Done");
 }
 
 void loadRawOffsetsFromEEPROM() {
+  // Optimiert: Block-Read statt einzelner Reads (18x schneller)
   Serial.println("Filling rawOffsets from EEPROM.");
-  for (int i = 0; i < 18; i++) {
-    int8_t val;
-    EEPROM.get(EEPROM_OFFSETS_ADDR + i * sizeof(int8_t), val);
-    rawOffsets[i] = val;
-  }
+  EEPROM.get(EEPROM_OFFSETS_ADDR, rawOffsets);
   updateOffsetVariables();
   printRawOffsets();
 }

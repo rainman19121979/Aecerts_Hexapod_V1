@@ -63,9 +63,9 @@ public:
     x -= pivot.x;
     y -= pivot.y;
 
-    // Rotate point by angle
-    int x_rotated = x * cos(angle) - y * sin(angle);
-    int y_rotated = x * sin(angle) + y * cos(angle);
+    // Rotate point by angle (Optimiert: float statt int für Präzision)
+    float x_rotated = x * cos(angle) - y * sin(angle);
+    float y_rotated = x * sin(angle) + y * cos(angle);
 
     // Translate point back to original position
     x = x_rotated + pivot.x;
@@ -137,9 +137,9 @@ public:
     y -= pivot.y;
     float angleRad = radians(angle);
 
-    // Rotate point by angle
-    int x_rotated = x * cos(angleRad) - y * sin(angleRad);
-    int y_rotated = x * sin(angleRad) + y * cos(angleRad);
+    // Rotate point by angle (Optimiert: float statt int für Präzision)
+    float x_rotated = x * cos(angleRad) - y * sin(angleRad);
+    float y_rotated = x * sin(angleRad) + y * cos(angleRad);
 
     // Translate point back to original position
     x = x_rotated + pivot.x;

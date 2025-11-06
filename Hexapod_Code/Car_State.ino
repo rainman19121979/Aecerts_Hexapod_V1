@@ -1,26 +1,43 @@
+// Optimiert: Konstanten für bessere Lesbarkeit und Wartbarkeit
+const float DEFAULT_PUSH_FRACTION = 3.0f / 6.0f;
+const float DEFAULT_SPEED_MULTIPLIER = 0.5f;
+const float DEFAULT_STRIDE_LENGTH_MULTIPLIER = 1.5f;
+const float DEFAULT_LIFT_HEIGHT_MULTIPLIER = 1.0f;
+const float DEFAULT_MAX_STRIDE_LENGTH = 200.0f;
+const float DEFAULT_MAX_SPEED = 100.0f;
+const float DEFAULT_LEG_PLACEMENT_ANGLE = 56.0f;
+const float DEFAULT_GLOBAL_SPEED_MULTIPLIER = 0.55f;
+const float DEFAULT_GLOBAL_ROTATION_MULTIPLIER = 0.55f;
+
+const float DYNAMIC_STRIDE_BASE = 70.0f;
+const float SLIDER_SPEED_OFFSET = 10.0f;
+const float SLIDER_SPEED_SCALE = 0.01f;
+const float SLIDER_ROTATION_MIN = 40.0f;
+const float SLIDER_ROTATION_MAX = 130.0f;
+
 float forwardAmount;
 float turnAmount;
-float  tArray[6];
+float tArray[6];
 int ControlPointsAmount = 0;
 int RotateControlPointsAmount = 0;
-float pushFraction = 3.0/6.0;
-float speedMultiplier = 0.5;
-float strideLengthMultiplier = 1.5;
-float liftHeightMultiplier = 1.0;
-float maxStrideLength = 200;
-float maxSpeed = 100;
-float legPlacementAngle = 56;
+float pushFraction = DEFAULT_PUSH_FRACTION;
+float speedMultiplier = DEFAULT_SPEED_MULTIPLIER;
+float strideLengthMultiplier = DEFAULT_STRIDE_LENGTH_MULTIPLIER;
+float liftHeightMultiplier = DEFAULT_LIFT_HEIGHT_MULTIPLIER;
+float maxStrideLength = DEFAULT_MAX_STRIDE_LENGTH;
+float maxSpeed = DEFAULT_MAX_SPEED;
+float legPlacementAngle = DEFAULT_LEG_PLACEMENT_ANGLE;
 
 int leftSlider = 50;
-float globalSpeedMultiplier = 0.55;
-float globalRotationMultiplier = 0.55;
+float globalSpeedMultiplier = DEFAULT_GLOBAL_SPEED_MULTIPLIER;
+float globalRotationMultiplier = DEFAULT_GLOBAL_ROTATION_MULTIPLIER;
 
 void carState() {
   if(currentState != Car)Serial.println("Car State."); 
 
   leftSlider = (int)rc_control_data.slider1;
-  globalSpeedMultiplier = (leftSlider + 10.0)*0.01;
-  globalRotationMultiplier = map(rc_control_data.slider1,0,100,40,130) * 0.01;
+  globalSpeedMultiplier = (leftSlider + SLIDER_SPEED_OFFSET) * SLIDER_SPEED_SCALE;
+  globalRotationMultiplier = map(rc_control_data.slider1, 0, 100, SLIDER_ROTATION_MIN, SLIDER_ROTATION_MAX) * SLIDER_SPEED_SCALE;
   
   if (currentState != Car || previousGait != currentGait) {
     currentState = Car;
@@ -147,21 +164,40 @@ void carState() {
     }      
   }
 
-  
-  
+
+  // Optimiert: Gemeinsame Berechnungen vor der Beinschleife
   for(int i = 0; i < 6; i++){
-    tArray[i] = (float)cycleProgress[i] / points;    
-  }  
+    tArray[i] = (float)cycleProgress[i] / points;
+  }
 
   forwardAmount = joy1CurrentMagnitude;
   turnAmount = joy2CurrentVector.x;
 
-  moveToPos(0, getGaitPoint(0, pushFraction));
-  moveToPos(1, getGaitPoint(1, pushFraction));
-  moveToPos(2, getGaitPoint(2, pushFraction));
-  moveToPos(3, getGaitPoint(3, pushFraction));
-  moveToPos(4, getGaitPoint(4, pushFraction));
-  moveToPos(5, getGaitPoint(5, pushFraction));
+  // Vorberechnungen für alle Beine (nur einmal statt 6x)
+  float rotateStrideLength = joy2CurrentVector.x * globalRotationMultiplier;
+  Vector2 v = joy1CurrentVector;
+
+  if(!dynamicStrideLength){
+    v.normalize();
+    v = v * DYNAMIC_STRIDE_BASE;
+  }
+
+  v = v * Vector2(1, strideLengthMultiplier);
+  v.y = constrain(v.y, -maxStrideLength/2, maxStrideLength/2);
+  v = v * globalSpeedMultiplier;
+
+  if(!dynamicStrideLength){
+    if(rotateStrideLength < 0) rotateStrideLength = -DYNAMIC_STRIDE_BASE;
+    else if(rotateStrideLength > 0) rotateStrideLength = DYNAMIC_STRIDE_BASE;
+    else rotateStrideLength = 0;
+  }
+
+  float weightSum = abs(forwardAmount) + abs(turnAmount);
+
+  // Bewegungen für alle Beine berechnen
+  for(int i = 0; i < 6; i++){
+    moveToPos(i, getGaitPoint(i, pushFraction, v, rotateStrideLength, weightSum));
+  }
   
   
 
@@ -181,28 +217,8 @@ void carState() {
 
 
 
-Vector3 getGaitPoint(int leg, float pushFraction){  
- 
-
-  float rotateStrideLength = joy2CurrentVector.x * globalRotationMultiplier;  
-  Vector2 v = joy1CurrentVector;
-
-  if(!dynamicStrideLength){
-    v.normalize();
-    v = v*70;
-  }
-
-  v = v * Vector2(1,strideLengthMultiplier);
-  v.y = constrain(v.y,-maxStrideLength/2, maxStrideLength/2);
-  v = v * globalSpeedMultiplier;
-
-  if(!dynamicStrideLength){
-    if(rotateStrideLength < 0) rotateStrideLength = -70;
-    else rotateStrideLength = 70;
-  }
-
-  float weightSum = abs(forwardAmount) + abs(turnAmount);
-
+// Optimiert: Vorberechnete Werte als Parameter übergeben
+Vector3 getGaitPoint(int leg, float pushFraction, Vector2 v, float rotateStrideLength, float weightSum){
   float t = tArray[leg];
 
   //if(leg == 0)print_value("cycleProgress[leg]",cycleProgress[leg]);

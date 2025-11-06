@@ -22,6 +22,11 @@ Servo coxa6;
 Servo femur6;
 Servo tibia6;
 
+// Servo-Arrays für optimierten Zugriff
+Servo* coxaServos[6] = {&coxa1, &coxa2, &coxa3, &coxa4, &coxa5, &coxa6};
+Servo* femurServos[6] = {&femur1, &femur2, &femur3, &femur4, &femur5, &femur6};
+Servo* tibiaServos[6] = {&tibia1, &tibia2, &tibia3, &tibia4, &tibia5, &tibia6};
+
 const int coxa1Pin = 22;
 const int femur1Pin = 23;
 const int tibia1Pin = 24;
@@ -46,6 +51,11 @@ const int coxa6Pin = 37;
 const int femur6Pin = 38;
 const int tibia6Pin = 39;
 
+// Pin-Arrays für optimierten Zugriff
+const int coxaPins[6] = {coxa1Pin, coxa2Pin, coxa3Pin, coxa4Pin, coxa5Pin, coxa6Pin};
+const int femurPins[6] = {femur1Pin, femur2Pin, femur3Pin, femur4Pin, femur5Pin, femur6Pin};
+const int tibiaPins[6] = {tibia1Pin, tibia2Pin, tibia3Pin, tibia4Pin, tibia5Pin, tibia6Pin};
+
 const float a1 = 46;  //Coxa Length
 const float a2 = 108; //Femur Length
 const float a3 = 200; //Tibia Length   
@@ -68,59 +78,21 @@ Vector3 AttackControlPoints[10];
 bool servosAttached = false;
 
 void attachServos(){
-  coxa1.attach(coxa1Pin,500,2500);
-  femur1.attach(femur1Pin,500,2500);
-  tibia1.attach(tibia1Pin,500,2500); 
-
-  coxa2.attach(coxa2Pin,500,2500);
-  femur2.attach(femur2Pin,500,2500);
-  tibia2.attach(tibia2Pin,500,2500);  
-
-  coxa3.attach(coxa3Pin,500,2500);
-  femur3.attach(femur3Pin,500,2500);
-  tibia3.attach(tibia3Pin,500,2500);
-
-  coxa4.attach(coxa4Pin,500,2500);
-  femur4.attach(femur4Pin,500,2500);
-  tibia4.attach(tibia4Pin,500,2500);
-
-  coxa5.attach(coxa5Pin,500,2500);
-  femur5.attach(femur5Pin,500,2500);
-  tibia5.attach(tibia5Pin,500,2500);
-
-  coxa6.attach(coxa6Pin,500,2500);
-  femur6.attach(femur6Pin,500,2500);
-  tibia6.attach(tibia6Pin,500,2500);
-
-  servosAttached = true;  
+  for(int i = 0; i < 6; i++){
+    coxaServos[i]->attach(coxaPins[i], 500, 2500);
+    femurServos[i]->attach(femurPins[i], 500, 2500);
+    tibiaServos[i]->attach(tibiaPins[i], 500, 2500);
+  }
+  servosAttached = true;
   Serial.println("Servos Attached");
 }
 
 void detachServos() {
-  coxa1.detach();
-  femur1.detach();
-  tibia1.detach();
-
-  coxa2.detach();
-  femur2.detach();
-  tibia2.detach();
-
-  coxa3.detach();
-  femur3.detach();
-  tibia3.detach();
-
-  coxa4.detach();
-  femur4.detach();
-  tibia4.detach();
-
-  coxa5.detach();
-  femur5.detach();
-  tibia5.detach();
-
-  coxa6.detach();
-  femur6.detach();
-  tibia6.detach();
-
+  for(int i = 0; i < 6; i++){
+    coxaServos[i]->detach();
+    femurServos[i]->detach();
+    tibiaServos[i]->detach();
+  }
   servosAttached = false;
   Serial.println("Servos Detached");
 }
