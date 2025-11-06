@@ -123,6 +123,7 @@ void loop() {
   if(currentType == RC_CONTROL_DATA) processControlData(rc_control_data);
   if(currentType == RC_SETTINGS_DATA) processSettingsData(rc_settings_data);
   if(currentType == RC_SENSOR_CONTROL_DATA) processSensorControlData(rc_sensor_control_data);
+  if(currentType == RC_ADVANCED_SETTINGS_DATA) processAdvancedSettings(rc_advanced_settings);
 }
 
 void processControlData(const RC_Control_Data_Package& data) {
@@ -130,9 +131,32 @@ void processControlData(const RC_Control_Data_Package& data) {
 
   dynamicStrideLength = data.dynamic_stride_length;
 
+  // NEU: Verarbeite Toggles
+  static bool gyroEnabled = false;
+  static bool highStepEnabled = false;
+  static bool easyModeEnabled = false;
+
+  gyroEnabled = data.toggleGyro;
+  highStepEnabled = data.toggleHighStep;
+  easyModeEnabled = data.toggleEasyMode;
+
+  // High Step Toggle: Erhöht Lift Height
+  extern float liftHeight;
+  if(highStepEnabled) {
+    liftHeight = 180;  // 50mm höher als normal (130mm)
+  } else {
+    liftHeight = 130;  // Normal
+  }
+
+  // Easy Mode: Begrenzt Geschwindigkeit
+  extern float globalSpeedMultiplier;
+  if(easyModeEnabled) {
+    globalSpeedMultiplier = min(globalSpeedMultiplier, 0.4f);  // Max 40% Speed
+  }
+
   /*sleep from controller*/
   if (data.sleep == 1) {
-    
+
     sleepState();
     return;
   }
@@ -183,18 +207,42 @@ void processControlData(const RC_Control_Data_Package& data) {
     return;
   }
 
-  /*Attack*/
-  if (data.joy1_Button == PRESSED && attackCooldown == 0) {
-    Serial.println("slam attack");
+  /*Attack - Jetzt mit Bumpers!*/
+  // Bumper A (Front Left) oder Joy1 Button -> Slam Attack
+  if ((data.pushButton1 == PRESSED || data.joy1_Button == PRESSED) && attackCooldown == 0) {
+    Serial.println("slam attack (Bumper A or Joy1)");
     resetMovementVectors();
     slamAttack();
     standingState();
     attackCooldown = 50;
     loopStartTime = millis();
     return;
-  } else {
-    attackCooldown = max(attackCooldown - elapsedTime, 0);
   }
+
+  // Bumper B (Back Left) -> Emergency Stop
+  if (data.pushButton2 == PRESSED) {
+    Serial.println("EMERGENCY STOP (Bumper B)");
+    resetMovementVectors();
+    standingState();
+    return;
+  }
+
+  // Bumper C (Front Right) -> Quick Turn Right
+  if (data.bumperC == PRESSED) {
+    Serial.println("Quick Turn Right (Bumper C)");
+    joy2CurrentVector.x = 100;  // Volle Rotation rechts
+    joy2CurrentMagnitude = 100;
+  }
+
+  // Bumper D (Back Right) -> Quick Turn Left
+  if (data.bumperD == PRESSED) {
+    Serial.println("Quick Turn Left (Bumper D)");
+    joy2CurrentVector.x = -100;  // Volle Rotation links
+    joy2CurrentMagnitude = 100;
+  }
+
+  // Attack Cooldown
+  attackCooldown = max(attackCooldown - elapsedTime, 0);
 }
 
 void processSettingsData(const RC_Settings_Data_Package& data) {
@@ -243,6 +291,50 @@ void processSensorControlData(const RC_Sensor_Control_Data_Package& data) {
   Serial.print(" Speed="); Serial.print(enableAdaptiveSpeed);
   Serial.print(" Balance="); Serial.print(enableBalanceControl);
   Serial.print(" Gait="); Serial.println(enableGaitOptimization);
+}
+
+void processAdvancedSettings(const RC_Advanced_Settings_Package& data) {
+  sendType = HEXAPOD_SENSOR_DATA; // Sende Sensor-Daten zurück
+
+  // Bewegungsparameter aktualisieren (extern from Car_State.ino)
+  extern float liftHeight;
+  extern float landHeight;
+  extern float strideOvershoot;
+  extern float distanceFromCenter;
+  extern float legPlacementAngle;
+  extern float standingDistanceAdjustment;
+
+  liftHeight = data.lift_height;
+  landHeight = data.land_height;
+  strideOvershoot = data.stride_overshoot;
+  distanceFromCenter = data.distance_from_center;
+  legPlacementAngle = data.leg_placement_angle;
+  standingDistanceAdjustment = data.standing_distance_adj - 50;  // -50 bis +50
+
+  // Gait-Overrides (nur wenn > 0, sonst Standard)
+  extern float pushFraction;
+  extern float speedMultiplier;
+  extern float liftHeightMultiplier;
+  extern float strideLengthMultiplier;
+
+  if(data.override_push_fraction > 0) {
+    pushFraction = data.override_push_fraction / 100.0f;  // 0-100 → 0.0-1.0
+  }
+  if(data.override_speed_mult > 0) {
+    speedMultiplier = data.override_speed_mult / 100.0f;  // 0-200 → 0.0-2.0
+  }
+  if(data.override_lift_mult > 0) {
+    liftHeightMultiplier = data.override_lift_mult / 100.0f;  // 0-300 → 0.0-3.0
+  }
+  if(data.override_stride_mult > 0) {
+    strideLengthMultiplier = data.override_stride_mult / 100.0f;  // 0-200 → 0.0-2.0
+  }
+
+  Serial.print("Advanced Settings aktualisiert: ");
+  Serial.print("Lift="); Serial.print(liftHeight);
+  Serial.print(" Land="); Serial.print(landHeight);
+  Serial.print(" Center="); Serial.print(distanceFromCenter);
+  Serial.print(" Angle="); Serial.println(legPlacementAngle);
 }
 
 void resetMovementVectors() {

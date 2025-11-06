@@ -16,31 +16,42 @@ enum PackageType {
     RC_SETTINGS_DATA = 2,
     HEXAPOD_SETTINGS_DATA = 3,
     HEXAPOD_SENSOR_DATA = 4,
-    RC_SENSOR_CONTROL_DATA = 5  // Neu: Sensor-Feature Steuerung
+    RC_SENSOR_CONTROL_DATA = 5,     // Sensor-Feature Steuerung
+    RC_ADVANCED_SETTINGS_DATA = 6   // Advanced Settings (Bewegungsparameter)
 };
 
 // Define the data packages
 struct RC_Control_Data_Package {
     byte type; // 1 byte
-    
+
     byte joy1_X; // 1 byte
     byte joy1_Y; // 1 byte
-    
+
     byte joy2_X; // 1 byte
-    byte joy2_Y; // 1 byte  
+    byte joy2_Y; // 1 byte
     byte slider1; // 1 byte
     byte slider2; // 1 byte
 
-    byte joy1_Button:1; // 1 bit
+    byte joy1_Button:1; // 1 bit - Slam Attack
     byte joy2_Button:1; // 1 bit
-    byte pushButton1:1; // 1 bit
-    byte pushButton2:1; // 1 bit
+    byte pushButton1:1; // 1 bit - Bumper A (Front Left)
+    byte pushButton2:1; // 1 bit - Bumper B (Back Left)
     byte idle:1;        // 1 bit
-    byte sleep:1;        // 1 bit
+    byte sleep:1;       // 1 bit
     byte dynamic_stride_length:1; // 1 bit
-    byte reserved : 1;  // 1 bits padding, 1 byte total
+    byte reserved : 1;  // 1 bit padding, 1 byte total
 
     byte gait;  // 1 byte
+
+    // NEU: Bumpers C & D + Toggles (1 byte = 8 bits)
+    byte bumperC:1;         // Bit 0 - Bumper C (Front Right)
+    byte bumperD:1;         // Bit 1 - Bumper D (Back Right)
+    byte toggleGyro:1;      // Bit 2 - Gyro-Steuerung an/aus
+    byte toggleHighStep:1;  // Bit 3 - Hohe Schritte an/aus
+    byte toggleEasyMode:1;  // Bit 4 - Easy Mode an/aus
+    byte toggleSpeedBoost:1;// Bit 5 - Speed Boost
+    byte reserved2:2;       // Bits 6-7 padding
+    // Total: 12 bytes
 };
 
 struct RC_Settings_Data_Package {
@@ -100,10 +111,33 @@ struct RC_Sensor_Control_Data_Package {
     byte padding[28];                 // Reserviert für zukünftige Erweiterungen
 };
 
+// NEU: Advanced Settings für Bewegungsparameter
+struct RC_Advanced_Settings_Package {
+    byte type; // 1 byte: RC_ADVANCED_SETTINGS_DATA (type 6)
+
+    // Bewegungsparameter (10 bytes)
+    byte lift_height;              // 1 byte: 50-250mm (mapped)
+    byte land_height;              // 1 byte: 30-120mm
+    byte stride_overshoot;         // 1 byte: 0-50mm
+    byte distance_from_center;     // 1 byte: 150-200mm
+    byte leg_placement_angle;      // 1 byte: 40-70°
+    byte standing_distance_adj;    // 1 byte: -50 bis +50mm
+
+    // Gait-Overrides (4 bytes) - 0 = nicht überschreiben, sonst Wert
+    byte override_push_fraction;   // 0-100% → 0.0-1.0
+    byte override_speed_mult;      // 0-200% → 0.0-2.0
+    byte override_lift_mult;       // 0-300% → 0.0-3.0
+    byte override_stride_mult;     // 0-200% → 0.0-2.0
+
+    // Padding auf 32 bytes
+    byte padding[21];
+};
+
 // Declare the data package variables
 RC_Control_Data_Package rc_control_data;
 RC_Settings_Data_Package rc_settings_data;
 RC_Sensor_Control_Data_Package rc_sensor_control_data;
+RC_Advanced_Settings_Package rc_advanced_settings;
 Hexapod_Settings_Data_Package hex_settings_data;
 Hexapod_Sensor_Data_Package hex_sensor_data;
 
@@ -179,6 +213,13 @@ void initializeControllerPayload(){
 
   rc_control_data.dynamic_stride_length = 1;
 
+  // NEU: Initialisiere Bumpers und Toggles
+  rc_control_data.bumperC = UNPRESSED;
+  rc_control_data.bumperD = UNPRESSED;
+  rc_control_data.toggleGyro = 0;        // Default: aus
+  rc_control_data.toggleHighStep = 0;    // Default: aus
+  rc_control_data.toggleEasyMode = 0;    // Default: aus
+  rc_control_data.toggleSpeedBoost = 0;  // Default: aus
 
   //settings package
   rc_settings_data.type = RC_SETTINGS_DATA;
@@ -199,6 +240,20 @@ void initializeControllerPayload(){
   rc_sensor_control_data.debounce_time_ms = 10;        // 10ms
   rc_sensor_control_data.min_contact_count = 3;        // Minimum 3 Kontakte
   memset(rc_sensor_control_data.padding, 0, 28);       // Padding löschen
+
+  //advanced settings package (neu)
+  rc_advanced_settings.type = RC_ADVANCED_SETTINGS_DATA;
+  rc_advanced_settings.lift_height = 130;               // 130mm default
+  rc_advanced_settings.land_height = 70;                // 70mm default
+  rc_advanced_settings.stride_overshoot = 10;           // 10mm default
+  rc_advanced_settings.distance_from_center = 173;      // 173mm default
+  rc_advanced_settings.leg_placement_angle = 56;        // 56° default
+  rc_advanced_settings.standing_distance_adj = 0;       // 0mm (keine Anpassung)
+  rc_advanced_settings.override_push_fraction = 0;      // 0 = nicht überschreiben
+  rc_advanced_settings.override_speed_mult = 0;         // 0 = nicht überschreiben
+  rc_advanced_settings.override_lift_mult = 0;          // 0 = nicht überschreiben
+  rc_advanced_settings.override_stride_mult = 0;        // 0 = nicht überschreiben
+  memset(rc_advanced_settings.padding, 0, 21);          // Padding löschen
 }
 
 byte currentType = RC_CONTROL_DATA;
@@ -222,6 +277,9 @@ bool GetSendNRFData(){
     } else if (incomingType == RC_SENSOR_CONTROL_DATA) {
         radio.read(&rc_sensor_control_data, sizeof(rc_sensor_control_data));
         Serial.println("Receiving SENSOR_CONTROL");
+    } else if (incomingType == RC_ADVANCED_SETTINGS_DATA) {
+        radio.read(&rc_advanced_settings, sizeof(rc_advanced_settings));
+        Serial.println("Receiving ADVANCED_SETTINGS");
     }   
 
     hex_sensor_data.current_sensor_value = mapFloat(analogRead(Current_Sensor_Pin), 0, 1024, 0, 50);
