@@ -7,6 +7,7 @@
 #include "Helpers.h"
 #include "RC.h"
 #include "Initializations.h"
+#include "FootContactSensors.h"  // Fuß-Kontaktsensoren Integration
 
 #define UNPRESSED 0x1
 #define PRESSED 0x0
@@ -100,12 +101,16 @@ void setup() {
   attachServos();
   RC_Setup();
   loadRawOffsetsFromEEPROM();
+  initFootContactSensors();  // Initialisiere Fuß-Kontaktsensoren
   stateInitialize();
 }
 
 void loop() {
   elapsedTime = millis() - loopStartTime;
   loopStartTime = millis();
+
+  // Update Fuß-Kontaktsensoren (Terrain-Anpassung, Stolper-Detektion, etc.)
+  updateFootContactSensors();
 
   connected = GetSendNRFData(); 
 

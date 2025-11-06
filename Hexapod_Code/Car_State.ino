@@ -201,10 +201,10 @@ void carState() {
   
   
 
-  float progressChangeAmount = (max(abs(forwardAmount),abs(turnAmount))* speedMultiplier)*globalSpeedMultiplier ;
+  // Optimiert: Adaptive Geschwindigkeit basierend auf Fuß-Kontaktsensoren
+  float progressChangeAmount = (max(abs(forwardAmount),abs(turnAmount))* speedMultiplier) * globalSpeedMultiplier * adaptiveSpeedMultiplier;
 
-  
-  progressChangeAmount = constrain(progressChangeAmount,0,maxSpeed*globalSpeedMultiplier);
+  progressChangeAmount = constrain(progressChangeAmount, 0, maxSpeed * globalSpeedMultiplier);
 
   for(int i = 0; i < 6; i++){
     cycleProgress[i] += progressChangeAmount;
@@ -247,19 +247,30 @@ Vector3 getGaitPoint(int leg, float pushFraction, Vector2 v, float rotateStrideL
 
   //Lifting
   else{
-    if(legStates[leg] != Lifting)setCycleStartPoints(leg);
+    // Optimiert: Prüfe Balance-Sicherheit vor dem Bein-Lifting
+    if(legStates[leg] != Lifting) {
+      if(canLiftLeg(leg)) {
+        setCycleStartPoints(leg);
+      } else {
+        // Balance unsicher - behalte Bein am Boden
+        return currentPoints[leg];
+      }
+    }
     legStates[leg] = Lifting;
 
+    // Optimiert: Adaptive Lifthöhe basierend auf Terrain
+    float adaptiveLift = getAdaptiveLiftHeight(liftHeight) * liftHeightMultiplier;
+
     ControlPoints[0] = cycleStartPoints[leg];
-    ControlPoints[1] = cycleStartPoints[leg] + Vector3(0,0,liftHeight * liftHeightMultiplier);
+    ControlPoints[1] = cycleStartPoints[leg] + Vector3(0, 0, adaptiveLift);
     ControlPoints[2] = Vector3(-v.x * strideMultiplier[leg] + distanceFromCenter, (v.y + strideOvershoot) * strideMultiplier[leg], distanceFromGround + landHeight).rotate(legPlacementAngle * rotationMultiplier[leg], Vector2(distanceFromCenter,0));
     ControlPoints[3] = Vector3(-v.x * strideMultiplier[leg] + distanceFromCenter, v.y * strideMultiplier[leg], distanceFromGround).rotate(legPlacementAngle * rotationMultiplier[leg], Vector2(distanceFromCenter,0));
     ControlPointsAmount = 4;
     Vector3 straightPoint = GetPointOnBezierCurve(ControlPoints, ControlPointsAmount, mapFloat(t,pushFraction,1,0,1));
 
     RotateControlPoints[0] = cycleStartPoints[leg];
-    RotateControlPoints[1] = cycleStartPoints[leg] + Vector3(0,0,liftHeight * liftHeightMultiplier);
-    RotateControlPoints[2] = { distanceFromCenter + 40, 0, distanceFromGround + liftHeight * liftHeightMultiplier};
+    RotateControlPoints[1] = cycleStartPoints[leg] + Vector3(0, 0, adaptiveLift);
+    RotateControlPoints[2] = { distanceFromCenter + 40, 0, distanceFromGround + adaptiveLift};
     RotateControlPoints[3] = { distanceFromCenter, -(rotateStrideLength + strideOvershoot), distanceFromGround + landHeight};
     RotateControlPoints[4] = { distanceFromCenter, -rotateStrideLength, distanceFromGround};
     RotateControlPointsAmount = 5;
