@@ -15,7 +15,8 @@ enum PackageType {
     RC_CONTROL_DATA = 1,
     RC_SETTINGS_DATA = 2,
     HEXAPOD_SETTINGS_DATA = 3,
-    HEXAPOD_SENSOR_DATA = 4
+    HEXAPOD_SENSOR_DATA = 4,
+    RC_SENSOR_CONTROL_DATA = 5  // Neu: Sensor-Feature Steuerung
 };
 
 // Define the data packages
@@ -68,11 +69,41 @@ struct Hexapod_Sensor_Data_Package {
     byte type; // 1 byte
     float current_sensor_value; // 4 bytes
     Vector2int foot_positions[6]; // 6 * 2 * 2 bytes = 24 bytes
+
+    // Neu: Fuß-Kontaktsensor Daten (3 bytes)
+    byte foot_contact:6;           // 6 bits: Fuß-Kontakt (1 bit pro Bein)
+    byte contact_count:4;          // 4 bits: Anzahl Kontakte (0-6)
+    byte terrain_roughness;        // 1 byte: Terrain-Rauheit (0-255, mapped von 0.0-1.0)
+    byte adaptive_speed_multiplier; // 1 byte: Geschwindigkeitsfaktor (0-255, mapped von 0.0-1.0)
+    // Total: 29 + 3 = 32 bytes (Perfekt!)
+};
+
+// Neu: Sensor-Feature Steuerung von RC zu Hexapod
+struct RC_Sensor_Control_Data_Package {
+    byte type; // 1 byte: RC_SENSOR_CONTROL_DATA
+
+    // Feature Toggles (1 byte = 8 bits)
+    byte enableTerrainAdaptation:1;   // Bit 0
+    byte enableStumbleDetection:1;    // Bit 1
+    byte enableAdaptiveSpeed:1;       // Bit 2
+    byte enableBalanceControl:1;      // Bit 3
+    byte enableGaitOptimization:1;    // Bit 4
+    byte enableSensorDebug:1;         // Bit 5: Debug-Ausgabe aktivieren
+    byte reserved:2;                  // Bits 6-7: Reserviert für zukünftige Features
+
+    // Erweiterte Parameter (optional, falls mehr Kontrolle gewünscht)
+    byte stumble_threshold_ms;        // 1 byte: 0-255 * 2 = 0-510ms
+    byte debounce_time_ms;            // 1 byte: 0-255ms
+    byte min_contact_count;           // 1 byte: Minimum Kontakte für sichere Balance (2-4)
+
+    // Padding auf 32 bytes
+    byte padding[28];                 // Reserviert für zukünftige Erweiterungen
 };
 
 // Declare the data package variables
 RC_Control_Data_Package rc_control_data;
 RC_Settings_Data_Package rc_settings_data;
+RC_Sensor_Control_Data_Package rc_sensor_control_data;
 Hexapod_Settings_Data_Package hex_settings_data;
 Hexapod_Sensor_Data_Package hex_sensor_data;
 
@@ -109,6 +140,11 @@ void RC_Setup(){
 void initializeHexPayload(){
   hex_sensor_data.type = HEXAPOD_SENSOR_DATA;
   hex_sensor_data.current_sensor_value = 0;
+  // Neu: Initialisiere Sensor-Felder
+  hex_sensor_data.foot_contact = 0;
+  hex_sensor_data.contact_count = 0;
+  hex_sensor_data.terrain_roughness = 0;
+  hex_sensor_data.adaptive_speed_multiplier = 255; // 1.0 als default
 
   hex_settings_data.type = HEXAPOD_SETTINGS_DATA;
   Serial.println("Filling hex_settings_data.offsets with 0's.");
@@ -146,14 +182,23 @@ void initializeControllerPayload(){
 
   //settings package
   rc_settings_data.type = RC_SETTINGS_DATA;
-
   rc_settings_data.calibrating = 0;
-  
-
   for (int i = 0; i < 18; i++) {
       rc_settings_data.offsets[i] = -128;
   }
 
+  //sensor control package (neu)
+  rc_sensor_control_data.type = RC_SENSOR_CONTROL_DATA;
+  rc_sensor_control_data.enableTerrainAdaptation = 1;  // Default: an
+  rc_sensor_control_data.enableStumbleDetection = 1;   // Default: an
+  rc_sensor_control_data.enableAdaptiveSpeed = 1;      // Default: an
+  rc_sensor_control_data.enableBalanceControl = 1;     // Default: an
+  rc_sensor_control_data.enableGaitOptimization = 1;   // Default: an
+  rc_sensor_control_data.enableSensorDebug = 0;        // Default: aus
+  rc_sensor_control_data.stumble_threshold_ms = 250;   // 500ms (250*2)
+  rc_sensor_control_data.debounce_time_ms = 10;        // 10ms
+  rc_sensor_control_data.min_contact_count = 3;        // Minimum 3 Kontakte
+  memset(rc_sensor_control_data.padding, 0, 28);       // Padding löschen
 }
 
 byte currentType = RC_CONTROL_DATA;
@@ -174,6 +219,9 @@ bool GetSendNRFData(){
     } else if (incomingType == RC_SETTINGS_DATA) {
         radio.read(&rc_settings_data, sizeof(rc_settings_data));
         Serial.println("Receiving SETTINGS");
+    } else if (incomingType == RC_SENSOR_CONTROL_DATA) {
+        radio.read(&rc_sensor_control_data, sizeof(rc_sensor_control_data));
+        Serial.println("Receiving SENSOR_CONTROL");
     }   
 
     hex_sensor_data.current_sensor_value = mapFloat(analogRead(Current_Sensor_Pin), 0, 1024, 0, 50);

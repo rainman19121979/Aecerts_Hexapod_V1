@@ -30,8 +30,8 @@ const int footContactPins[6] = {
 // Sensor-Konfiguration
 // =============================================================================
 const bool FOOT_CONTACT_ACTIVE_LOW = true;  // true wenn Sensor bei Kontakt LOW ist
-const int DEBOUNCE_TIME_MS = 10;            // Entprellzeit in Millisekunden
-const int STUCK_DETECTION_THRESHOLD_MS = 500;  // Fuß gilt als "feststeckend" nach 500ms
+int DEBOUNCE_TIME_MS = 10;                  // Entprellzeit in Millisekunden (von RC steuerbar)
+int STUCK_DETECTION_THRESHOLD_MS = 500;     // Fuß gilt als "feststeckend" nach 500ms (von RC steuerbar)
 
 // =============================================================================
 // Feature-Flags (Ein/Aus-Schalten einzelner Features)
@@ -270,6 +270,31 @@ Gait suggestOptimalGait() {
 }
 
 // =============================================================================
+// Sensor-Daten an RC senden (für hex_sensor_data Paket)
+// =============================================================================
+void updateSensorDataPackage() {
+  // Fuß-Kontakt als 6-bit Bitfeld (extern from RC.h)
+  extern Hexapod_Sensor_Data_Package hex_sensor_data;
+
+  // Packe Fuß-Kontakte in 6 bits
+  hex_sensor_data.foot_contact = 0;
+  for(int i = 0; i < 6; i++) {
+    if(footContact[i]) {
+      hex_sensor_data.foot_contact |= (1 << i);
+    }
+  }
+
+  // Anzahl Kontakte
+  hex_sensor_data.contact_count = contactCount;
+
+  // Terrain-Rauheit (0.0-1.0 → 0-255)
+  hex_sensor_data.terrain_roughness = (byte)(terrainRoughness * 255.0f);
+
+  // Geschwindigkeitsfaktor (0.0-1.0 → 0-255)
+  hex_sensor_data.adaptive_speed_multiplier = (byte)(adaptiveSpeedMultiplier * 255.0f);
+}
+
+// =============================================================================
 // Haupt-Update-Funktion (in loop() aufrufen!)
 // =============================================================================
 void updateFootContactSensors() {
@@ -291,6 +316,9 @@ void updateFootContactSensors() {
 
   // 5. Balance prüfen
   checkBalanceSafety();
+
+  // 6. Sensor-Daten für RC-Übertragung aktualisieren
+  updateSensorDataPackage();
 }
 
 // =============================================================================

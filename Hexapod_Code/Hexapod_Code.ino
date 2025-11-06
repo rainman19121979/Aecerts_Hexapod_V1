@@ -122,6 +122,7 @@ void loop() {
 
   if(currentType == RC_CONTROL_DATA) processControlData(rc_control_data);
   if(currentType == RC_SETTINGS_DATA) processSettingsData(rc_settings_data);
+  if(currentType == RC_SENSOR_CONTROL_DATA) processSensorControlData(rc_sensor_control_data);
 }
 
 void processControlData(const RC_Control_Data_Package& data) {
@@ -201,13 +202,47 @@ void processSettingsData(const RC_Settings_Data_Package& data) {
   if (data.calibrating == 1) {
     calibrationState();
     return;
-  }  
+  }
 
   //finished calibrating, save offsets.
   if (currentState == Calibrate) {
     saveOffsets();
   }
   sleepState();
+}
+
+void processSensorControlData(const RC_Sensor_Control_Data_Package& data) {
+  sendType = HEXAPOD_SENSOR_DATA; // Sende Sensor-Daten zurück
+
+  // Aktualisiere Feature-Toggles aus RC
+  enableTerrainAdaptation = data.enableTerrainAdaptation;
+  enableStumbleDetection = data.enableStumbleDetection;
+  enableAdaptiveSpeed = data.enableAdaptiveSpeed;
+  enableBalanceControl = data.enableBalanceControl;
+  enableGaitOptimization = data.enableGaitOptimization;
+
+  // Debug-Ausgabe aktivieren/deaktivieren
+  if(data.enableSensorDebug) {
+    static unsigned long lastDebug = 0;
+    if(millis() - lastDebug > 500) {
+      printFootContactStatus();
+      lastDebug = millis();
+    }
+  }
+
+  // Erweiterte Parameter aktualisieren
+  // Threshold wird * 2 gesendet (weil byte nur 0-255 ist)
+  extern int STUCK_DETECTION_THRESHOLD_MS;
+  extern int DEBOUNCE_TIME_MS;
+  STUCK_DETECTION_THRESHOLD_MS = data.stumble_threshold_ms * 2;
+  DEBOUNCE_TIME_MS = data.debounce_time_ms;
+
+  Serial.print("Sensor-Features aktualisiert: ");
+  Serial.print("Terrain="); Serial.print(enableTerrainAdaptation);
+  Serial.print(" Stumble="); Serial.print(enableStumbleDetection);
+  Serial.print(" Speed="); Serial.print(enableAdaptiveSpeed);
+  Serial.print(" Balance="); Serial.print(enableBalanceControl);
+  Serial.print(" Gait="); Serial.println(enableGaitOptimization);
 }
 
 void resetMovementVectors() {
